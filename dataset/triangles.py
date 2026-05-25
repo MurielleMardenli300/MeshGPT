@@ -37,14 +37,18 @@ class TriangleNodes(GeometricDataset):
         with open(data_path, 'rb') as fptr:
             data = pickle.load(fptr)
             if force_category is not None:
+                print(f"force_category exists")
                 for s in ['train', 'val']:
-                    data[f'vertices_{s}'] = [data[f'vertices_{s}'][i] for i in range(len(data[f'vertices_{s}'])) if data[f'name_{s}'][i].split('_')[0] == force_category]
-                    data[f'faces_{s}'] = [data[f'faces_{s}'][i] for i in range(len(data[f'faces_{s}'])) if data[f'name_{s}'][i].split('_')[0] == force_category]
-                    data[f'name_{s}'] = [data[f'name_{s}'][i] for i in range(len(data[f'name_{s}'])) if data[f'name_{s}'][i].split('_')[0] == force_category]
+                    data[f'vertices_{s}'] = [data[f'vertices_{s}'][i] for i in range(len(data[f'vertices_{s}']))]
+                    data[f'faces_{s}'] = [data[f'faces_{s}'][i] for i in range(len(data[f'faces_{s}']))]
+                    data[f'name_{s}'] = [data[f'name_{s}'][i] for i in range(len(data[f'name_{s}']))]
                 if len(data[f'vertices_val']) == 0:
                     data[f'vertices_val'] = data[f'vertices_train']
                     data[f'faces_val'] = data[f'faces_train']
                     data[f'name_val'] = data[f'name_train']
+                print(f"data vertices looks like: {data[f'vertices_{s}']}")
+                print(f"data faces looks like: {data[f'faces_{s}']}")
+                
             if not config.overfit:
                 self.names = data[f'name_{split}']
                 self.cached_vertices = data[f'vertices_{split}']
@@ -172,6 +176,7 @@ class TriangleNodesWithSequenceIndices(TriangleNodes):
         max_inner_face_len = 0
         self.padding = int(config.padding * self.block_size)
         self.sequence_stride = config.sequence_stride
+        print(f"cached vertices: {self.cached_vertices}")
         for i in range(len(self.cached_vertices)):
             self.cached_vertices[i] = np.array(self.cached_vertices[i])
             for j in range(len(self.cached_faces[i])):

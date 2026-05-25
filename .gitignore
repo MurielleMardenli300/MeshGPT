@@ -1,0 +1,12 @@
+
+# data files
+*.stl
+*.jpg
+*.obj
+*.pkl
+
+# pycache
+*.pyc
+
+# checkpoints
+*.pth

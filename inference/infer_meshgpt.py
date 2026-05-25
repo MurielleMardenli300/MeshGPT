@@ -18,6 +18,10 @@ from tqdm import tqdm
 from model.transformer import QuantSoupTransformer
 from pytorch_lightning import seed_everything
 
+from util.metric_helpers import compute_all_metrics
+
+DATA_DIR     = Path("data")
+SHAPENET_DIR = DATA_DIR / "shapenet"
 
 @torch.no_grad()
 def main(config, mode):
@@ -26,9 +30,9 @@ def main(config, mode):
     vq_cfg = omegaconf.OmegaConf.load(Path(config.vq_resume).parents[1] / "config.yaml")
     dataset = TriangleNodesWithFacesAndSequenceIndices(config, 'train', True, True , config.ft_category)
     prompt_num_faces  = 4
-    output_dir_image = Path(f'runs/{config.experiment}/inf_image_{mode}')
+    output_dir_image = Path(f'runs/{config.experiment}/inf_image_{mode}/medshapenet_1')
     output_dir_image.mkdir(exist_ok=True, parents=True)
-    output_dir_mesh = Path(f'runs/{config.experiment}/inf_mesh_{mode}')
+    output_dir_mesh = Path(f'runs/{config.experiment}/inf_mesh_{mode}/meshapenet_1')
     output_dir_mesh.mkdir(exist_ok=True, parents=True)
     model_cfg = get_qsoup_model_config(config, vq_cfg.embed_levels)
     model = QuantSoupTransformer(model_cfg, vq_cfg)
@@ -40,11 +44,13 @@ def main(config, mode):
     sequencer = sequencer.to(device)
     sequencer = sequencer.eval()
     decoder = get_rvqvae_v0_decoder(vq_cfg, config.vq_resume, device)
-    pnet = get_pointnet_classifier().to(device)
+    
+    # Gets a real permutation invariant feature vector per shape
+    pnet = get_pointnet_cla ssifier().to(device)
 
     k = 0
     while k < config.num_val_samples:
-
+ 
         data = dataset.get(random.randint(0, len(dataset) - 1))
         soup_sequence, face_in_idx, face_out_idx, target = sequencer.get_completion_sequence(
             data.x.to(device),
@@ -84,6 +90,21 @@ def main(config, mode):
         except Exception as e:
             print('Exception occured: ', e)
             pass  # sometimes the mesh is invalid (ngon) and we don't want to crash
+    
+    # MM: ADDED 
+    print(f"output_dir_mesh: {output_dir_mesh}")
+    metrics = compute_all_metrics(
+        gen_mesh_dir=output_dir_mesh,
+        config=config,
+        device=device
+    )
+    
+    print("\n══════════════════════════════")
+    print("         METRICS")
+    print("══════════════════════════════")
+    for key, val in metrics.items():
+        print(f"  {key:12s}: {val:.6f}")
+    print("══════════════════════════════\n")
 
 
 if __name__ == "__main__":
@@ -95,4 +116,5 @@ if __name__ == "__main__":
     cfg.top_p = 0.95
     cfg.temperature = 1.0
     cfg.low_augment = True
+    
     main(cfg, sys.argv[2])
